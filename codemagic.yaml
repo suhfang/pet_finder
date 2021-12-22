@@ -1,0 +1,77 @@
+workflows:
+  ios-workflow:
+    name: iOS Workflow
+    instance_type: mac_mini
+    max_build_duration: 60
+    triggering:
+      events:
+        - push
+      cancel_previous_builds: true
+    environment:
+      flutter: stable
+      xcode: latest
+      cocoapods: default
+    scripts:
+      - name: Set up local properties
+        script: echo "flutter.sdk=$HOME/programs/flutter" > "$FCI_BUILD_DIR/android/local.properties"
+      - name: Get Flutter packages
+        script: flutter packages pub get
+      - name: Install Podfiles
+        script: find . -name "Podfile" -execdir pod install \;
+      - name: Flutter analyze
+        script: flutter analyze
+      - name: Flutter unit tests
+        script: flutter test
+      - name: Build debug iOS app
+        script: flutter build ios --debug --no-codesign
+    artifacts:
+      - build/**/outputs/**/mapping.txt
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+      - flutter_drive.log
+    publishing:
+      email:
+        recipients:
+          - suhfangmbeng@gmail.com
+  android-workflow:
+    name: Android Workflow
+    instance_type: mac_mini
+    max_build_duration: 60
+    triggering:
+      events:
+        - push
+      cancel_previous_builds: true
+    environment:
+      flutter: stable
+    scripts:
+      - name: Set up debug keystore
+        script: |
+          rm -f ~/.android/debug.keystore
+          keytool -genkeypair \
+            -alias androiddebugkey \
+            -keypass android \
+            -keystore ~/.android/debug.keystore \
+            -storepass android \
+            -dname 'CN=Android Debug,O=Android,C=US' \
+            -keyalg 'RSA' \
+            -keysize 2048 \
+            -validity 10000
+      - name: Set up local properties
+        script: echo "flutter.sdk=$HOME/programs/flutter" > "$FCI_BUILD_DIR/android/local.properties"
+      - name: Get Flutter packages
+        script: flutter packages pub get
+      - name: Flutter analyze
+        script: flutter analyze
+      - name: Flutter unit tests
+        script: flutter test
+      - name: Build debug apk
+        script: flutter build apk --debug
+    artifacts:
+      - build/**/outputs/**/*.apk
+      - build/**/outputs/**/*.aab
+      - build/**/outputs/**/mapping.txt
+      - flutter_drive.log
+    publishing:
+      email:
+        recipients:
+          - suhfangmbeng@gmail.com
